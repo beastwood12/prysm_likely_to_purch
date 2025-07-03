@@ -414,11 +414,11 @@ export default function Calculator() {
         </div>
         <div className="text-center">
           <div className="text-lg font-bold text-purple-600">
-            {(() => {
-              const totalPurchasers = timeSeriesResults.reduce((sum: number, month) => sum + (month.numberPurchasers || 0), 0);
-              const totalPotential = timeSeriesResults.reduce((sum: number, month) => sum + (month.potentialPurchasers || 0), 0);
+            {timeSeriesResults.length > 0 ? (() => {
+              const totalPurchasers: number = timeSeriesResults.reduce((sum: number, month: any) => sum + Number(month.numberPurchasers || 0), 0);
+              const totalPotential: number = timeSeriesResults.reduce((sum: number, month: any) => sum + Number(month.potentialPurchasers || 0), 0);
               return totalPotential > 0 ? ((totalPurchasers / totalPotential) * 100).toFixed(1) : '0.0';
-            })()}%
+            })() : '0.0'}%
           </div>
           <div className="text-xs text-gray-600">Avg Conversion Rate</div>
         </div>
