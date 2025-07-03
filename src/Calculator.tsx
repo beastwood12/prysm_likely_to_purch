@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import * as Chart from 'chart.js';
 
 export default function Calculator() {
@@ -24,7 +24,7 @@ export default function Calculator() {
   };
 
   // Regional data
-  const data = {
+  const data: Record<string, Record<string, number>> = {
     overall: { veryHigh: 882, high: 2852, medium: 19208, low: 13264, veryLow: 5335 },
     japan: { veryHigh: 245, high: 824, medium: 5502, low: 1295, veryLow: 179 },
     latinAmerica: { veryHigh: 171, high: 267, medium: 1246, low: 1563, veryLow: 420 },
