@@ -516,7 +516,7 @@ export default function Calculator() {
 
       {/* Information Sections */}
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mt-4">
-        <h3 className="text-sm font-semibold text-gray-800 mb-2">💡 Corrected Single-Purchase Model</h3>
+        <h3 className="text-sm font-semibold text-gray-800 mb-2">💡 Likely to Purchase Model Notes</h3>
         <div className="text-xs text-gray-700 space-y-2">
           <p><strong>Target Product:</strong> $300 carotenoid measurement device with tracking app to help distributors demonstrate SCS vitamin effectiveness</p>
           <p><strong>Survey Data Foundation:</strong> 75% interested in concept, 63% would purchase at $249, ~56% estimated at $300</p>
