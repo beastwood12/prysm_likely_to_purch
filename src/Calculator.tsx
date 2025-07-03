@@ -331,11 +331,11 @@ export default function Calculator() {
             <input 
               type="number" 
               value={devicesPerUser} 
-              onChange={(e) => setDevicesPerUser(parseFloat(e.target.value) || 1)}
+              onChange={(e) => setDevicesPerUser(parseInt(e.target.value) || 1)}
               className="w-full p-2 border rounded"
               placeholder="1"
-              step="0.1"
-              min="0.1"
+              step="1"
+              min="1"
             />
           </div>
         </div>
