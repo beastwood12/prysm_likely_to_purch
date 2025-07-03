@@ -1,11 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import * as Chart from 'chart.js';
 
 export default function Calculator() {
   const [rates, setRates] = useState({ veryHigh: 78, high: 56, medium: 34, low: 17, veryLow: 6 });
   const [price, setPrice] = useState(300);
   const [region, setRegion] = useState('overall');
-  const [activeTab, setActiveTab] = useState('calculator');
   const [devicesPerUser, setDevicesPerUser] = useState(1);
+
+  const devicesChartRef = useRef(null);
+  const purchasersChartRef = useRef(null);
+  const revenueChartRef = useRef(null);
+  const devicesChartInstance = useRef(null);
+  const purchasersChartInstance = useRef(null);
+  const revenueChartInstance = useRef(null);
 
   // Configuration constants
   const CATEGORIES = ['veryHigh', 'high', 'medium', 'low', 'veryLow'];
@@ -40,7 +47,7 @@ export default function Calculator() {
     { month: 'Dec 2024', users: 31838 }
   ];
 
-  // Main calculations - accounting for unique users only
+  // Main calculations
   const calculations = useMemo(() => {
     const regionData = data[region];
     
@@ -77,7 +84,7 @@ export default function Calculator() {
       totalRevenue: totalDevicesSold * price,
       conversionRate: ((totalPurchasingUsers / totalUniqueUsers) * 100).toFixed(1)
     };
-  }, [rates, price, region, devicesPerUser]);
+  }, [rates, price, region, devicesPerUser, CATEGORIES, CATEGORY_NAMES, data]);
 
   // Time series calculations - proper category-based purchasing with quota tracking
   const timeSeriesResults = useMemo(() => {
@@ -141,6 +148,138 @@ export default function Calculator() {
     });
   }, [data, region, rates, devicesPerUser, price, timeSeriesData, CATEGORIES]);
 
+  // Chart creation effect
+  useEffect(() => {
+    // Register Chart.js components
+    if (Chart.Chart && Chart.registerables) {
+      Chart.Chart.register(...Chart.registerables);
+    }
+
+    // Destroy existing charts
+    if (devicesChartInstance.current) {
+      devicesChartInstance.current.destroy();
+    }
+    if (purchasersChartInstance.current) {
+      purchasersChartInstance.current.destroy();
+    }
+    if (revenueChartInstance.current) {
+      revenueChartInstance.current.destroy();
+    }
+
+    // Create charts
+    if (devicesChartRef.current && timeSeriesResults.length > 0) {
+      devicesChartInstance.current = new Chart.Chart(devicesChartRef.current, {
+        type: 'bar',
+        data: {
+          labels: timeSeriesResults.map(r => r.month),
+          datasets: [{
+            label: 'Devices Sold',
+            data: timeSeriesResults.map(r => r.devicesPurchased),
+            backgroundColor: '#8884d8'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { font: { size: 10 } }
+            },
+            x: {
+              ticks: { 
+                font: { size: 9 },
+                maxRotation: 45
+              }
+            }
+          }
+        }
+      });
+    }
+
+    if (purchasersChartRef.current && timeSeriesResults.length > 0) {
+      purchasersChartInstance.current = new Chart.Chart(purchasersChartRef.current, {
+        type: 'line',
+        data: {
+          labels: timeSeriesResults.map(r => r.month),
+          datasets: [{
+            label: 'Purchasers',
+            data: timeSeriesResults.map(r => r.numberPurchasers),
+            borderColor: '#82ca9d',
+            backgroundColor: 'rgba(130, 202, 157, 0.1)',
+            tension: 0.1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { font: { size: 10 } }
+            },
+            x: {
+              ticks: { 
+                font: { size: 9 },
+                maxRotation: 45
+              }
+            }
+          }
+        }
+      });
+    }
+
+    if (revenueChartRef.current && timeSeriesResults.length > 0) {
+      revenueChartInstance.current = new Chart.Chart(revenueChartRef.current, {
+        type: 'bar',
+        data: {
+          labels: timeSeriesResults.map(r => r.month),
+          datasets: [{
+            label: 'Revenue',
+            data: timeSeriesResults.map(r => r.revenue),
+            backgroundColor: '#ffc658'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { 
+                font: { size: 10 },
+                callback: function(value) {
+                  return '$' + (value / 1000).toFixed(0) + 'k';
+                }
+              }
+            },
+            x: {
+              ticks: { 
+                font: { size: 9 },
+                maxRotation: 45
+              }
+            }
+          }
+        }
+      });
+    }
+
+    return () => {
+      if (devicesChartInstance.current) devicesChartInstance.current.destroy();
+      if (purchasersChartInstance.current) purchasersChartInstance.current.destroy();
+      if (revenueChartInstance.current) revenueChartInstance.current.destroy();
+    };
+  }, [timeSeriesResults]);
+
   // Event handlers
   const setPreset = (preset) => setRates(PRESETS[preset]);
   const updateRate = (category, value) => 
@@ -150,296 +289,227 @@ export default function Calculator() {
     <div className="p-4 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Device Sales Calculator</h1>
       
-      {/* Tab Navigation */}
-      <div className="flex mb-6 border-b">
-        <button
-          onClick={() => setActiveTab('calculator')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'calculator'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Calculator
-        </button>
-        <button
-          onClick={() => setActiveTab('trends')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'trends'
-              ? 'border-b-2 border-blue-500 text-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Trends Over Time
-        </button>
+      {/* Controls */}
+      <div className="mb-4 p-3 bg-white rounded shadow">
+        {/* Main controls row */}
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Choose A Region</label>
+            <select 
+              value={region} 
+              onChange={(e) => setRegion(e.target.value)}
+              className="w-full p-2 border rounded"
+            >
+              <option value="overall">Global</option>
+              <option value="japan">Japan</option>
+              <option value="latinAmerica">Latin America</option>
+              <option value="korea">Korea</option>
+              <option value="hkmctw">HK/MC/TW</option>
+              <option value="eua">EU&A</option>
+              <option value="seAsia">S.E. Asia</option>
+              <option value="northAmerica">North America</option>
+              <option value="pacific">Pacific</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Device Price (USD)</label>
+            <div className="relative">
+              <span className="absolute left-2 top-2 text-gray-500">$</span>
+              <input 
+                type="number" 
+                value={price} 
+                onChange={(e) => setPrice(parseInt(e.target.value) || 300)}
+                className="w-full p-2 pl-6 border rounded"
+                placeholder="300"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Devices Per User</label>
+            <input 
+              type="number" 
+              value={devicesPerUser} 
+              onChange={(e) => setDevicesPerUser(parseFloat(e.target.value) || 1)}
+              className="w-full p-2 border rounded"
+              placeholder="1"
+              step="0.1"
+              min="0.1"
+            />
+          </div>
+        </div>
       </div>
 
-      {activeTab === 'calculator' && (
-        <div>
-          {/* Controls */}
-          <div className="mb-4 p-3 bg-white rounded shadow">
-            {/* First row - main controls */}
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Choose A Region</label>
-                <select 
-                  value={region} 
-                  onChange={(e) => setRegion(e.target.value)}
-                  className="w-full p-2 border rounded"
-                >
-                  <option value="overall">Global</option>
-                  <option value="japan">Japan</option>
-                  <option value="latinAmerica">Latin America</option>
-                  <option value="korea">Korea</option>
-                  <option value="hkmctw">HK/MC/TW</option>
-                  <option value="eua">EU&A</option>
-                  <option value="seAsia">S.E. Asia</option>
-                  <option value="northAmerica">North America</option>
-                  <option value="pacific">Pacific</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Device Price (USD)</label>
-                <div className="relative">
-                  <span className="absolute left-2 top-2 text-gray-500">$</span>
-                  <input 
-                    type="number" 
-                    value={price} 
-                    onChange={(e) => setPrice(parseInt(e.target.value) || 300)}
-                    className="w-full p-2 pl-6 border rounded"
-                    placeholder="300"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Devices Per User</label>
-                <input 
-                  type="number" 
-                  value={devicesPerUser} 
-                  onChange={(e) => setDevicesPerUser(parseFloat(e.target.value) || 1)}
-                  className="w-full p-2 border rounded"
-                  placeholder="1"
+      {/* Rate Inputs with Presets */}
+      <div className="p-4 bg-blue-50 border border-blue-200 rounded shadow-md mb-4">
+        <div className="flex justify-between items-center mb-3">
+          <label className="block text-xl font-semibold text-blue-800">
+            Likelihood To Purchase (%)
+          </label>
+          <div className="flex gap-2">
+            <label className="text-xs font-medium text-gray-600 mr-2">Preset Scenarios:</label>
+            {Object.keys(PRESETS).map(preset => (
+              <button 
+                key={preset}
+                onClick={() => setPreset(preset)}
+                className={`px-2 py-1 text-white rounded text-xs capitalize ${
+                  preset === 'optimistic' ? 'bg-green-500 hover:bg-green-600' :
+                  preset === 'likely' ? 'bg-blue-500 hover:bg-blue-600' :
+                  'bg-red-500 hover:bg-red-600'
+                }`}
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-5 gap-2">
+          {CATEGORIES.map((category, index) => (
+            <div key={category} className="text-center">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                {CATEGORY_NAMES[index]}
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={rates[category]}
+                  onChange={(e) => updateRate(category, e.target.value)}
+                  className="w-full p-1 border border-blue-300 rounded text-sm text-center pr-4 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   step="0.1"
-                  min="0.1"
                 />
+                <span className="absolute right-1 top-1 text-xs text-gray-400">%</span>
               </div>
             </div>
-            
-            {/* Second row - preset scenarios */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Preset Scenarios</label>
-              <div className="grid grid-cols-3 gap-2 max-w-md">
-                {Object.keys(PRESETS).map(preset => (
-                  <button 
-                    key={preset}
-                    onClick={() => setPreset(preset)}
-                    className={`px-3 py-2 text-white rounded text-sm capitalize ${
-                      preset === 'optimistic' ? 'bg-green-500 hover:bg-green-600' :
-                      preset === 'likely' ? 'bg-blue-500 hover:bg-blue-600' :
-                      'bg-red-500 hover:bg-red-600'
-                    }`}
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Rate Inputs */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded shadow-md mb-4">
-            <label className="block text-sm font-medium text-blue-800 mb-3">
-              % of users in each category that will purchase devices
-            </label>
-            <div className="grid grid-cols-5 gap-2">
-              {CATEGORIES.map((category, index) => (
-                <div key={category} className="text-center">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {CATEGORY_NAMES[index]}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={rates[category]}
-                      onChange={(e) => updateRate(category, e.target.value)}
-                      className="w-full p-1 border border-blue-300 rounded text-sm text-center pr-4 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                      step="0.1"
-                    />
-                    <span className="absolute right-1 top-1 text-xs text-gray-400">%</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-5 gap-3 mb-4 p-4 bg-white rounded shadow">
-            <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">{calculations.totalUsers.toLocaleString()}</div>
-              <div className="text-xs text-gray-600">Total Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-green-600">{calculations.totalPurchasingUsers.toLocaleString()}</div>
-              <div className="text-xs text-gray-600">Purchasing Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-purple-600">{calculations.totalDevicesSold.toLocaleString()}</div>
-              <div className="text-xs text-gray-600">Devices Sold</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-indigo-600">{calculations.conversionRate}%</div>
-              <div className="text-xs text-gray-600">User Conversion</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-orange-600">${calculations.totalRevenue.toLocaleString()}</div>
-              <div className="text-xs text-gray-600">Device Revenue</div>
-            </div>
-          </div>
-
-          {/* Results Table */}
-          <div className="bg-white rounded shadow overflow-hidden mb-4">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left">Category</th>
-                  <th className="px-3 py-2 text-right">Users</th>
-                  <th className="px-3 py-2 text-right">Rate</th>
-                  <th className="px-3 py-2 text-right">Purchasing Users</th>
-                  <th className="px-3 py-2 text-right">Devices Sold</th>
-                  <th className="px-3 py-2 text-right">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {calculations.results.map((result, i) => (
-                  <tr key={i} className={i % 2 ? 'bg-gray-50' : 'bg-white'}>
-                    <td className="px-3 py-2 font-medium">{result.category}</td>
-                    <td className="px-3 py-2 text-right">{result.users.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right">{result.rate}%</td>
-                    <td className="px-3 py-2 text-right font-medium">{result.purchasingUsers.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right font-medium">{result.devicesSold.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right">${result.revenue.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot className="bg-gray-100 font-semibold">
-                <tr>
-                  <td className="px-3 py-2">TOTAL</td>
-                  <td className="px-3 py-2 text-right">{calculations.totalUsers.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right">{calculations.conversionRate}%</td>
-                  <td className="px-3 py-2 text-right">{calculations.totalPurchasingUsers.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right">{calculations.totalDevicesSold.toLocaleString()}</td>
-                  <td className="px-3 py-2 text-right">${calculations.totalRevenue.toLocaleString()}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          ))}
         </div>
-      )}
+      </div>
 
-      {activeTab === 'trends' && (
-        <div>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold mb-2">Device Sales Trends Over Time</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Projected device sales and revenue based on current conversion rates applied to historical user activity
-            </p>
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold mb-2">Device Sales Trends Over Time</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Projected device sales and revenue based on category-specific conversion rates and quota tracking over time
+        </p>
+      </div>
+
+      {/* Trends Summary */}
+      <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-white rounded shadow">
+        <div className="text-center">
+          <div className="text-lg font-bold text-blue-600">
+            {timeSeriesResults.reduce((sum, month) => sum + month.numberPurchasers, 0).toLocaleString()}
           </div>
+          <div className="text-xs text-gray-600">Total Purchasing Users</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-green-600">
+            {timeSeriesResults.reduce((sum, month) => sum + month.devicesPurchased, 0).toLocaleString()}
+          </div>
+          <div className="text-xs text-gray-600">Total Devices Sold</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-orange-600">
+            ${timeSeriesResults.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
+          </div>
+          <div className="text-xs text-gray-600">Total Projected Revenue</div>
+        </div>
+        <div className="text-center">
+          <div className="text-lg font-bold text-purple-600">
+            {timeSeriesResults.length > 0 ? (timeSeriesResults.reduce((sum, month) => sum + month.numberPurchasers, 0) / 
+              timeSeriesResults.reduce((sum, month) => sum + month.potentialPurchasers, 0) * 100).toFixed(1) : '0.0'}%
+          </div>
+          <div className="text-xs text-gray-600">Avg Conversion Rate</div>
+        </div>
+      </div>
 
-          {/* Trends Summary */}
-          <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-white rounded shadow">
-            <div className="text-center">
-              <div className="text-lg font-bold text-blue-600">
-                {timeSeriesResults.reduce((sum, month) => sum + month.purchasingUsers, 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-600">Total Purchasing Users</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-green-600">
-                {timeSeriesResults.reduce((sum, month) => sum + month.devicesSold, 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-600">Total Devices Sold</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-orange-600">
+      {/* Time Series Table */}
+      <div className="bg-white rounded shadow overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left">Month</th>
+              <th className="px-3 py-2 text-right">Potential Purchasers</th>
+              <th className="px-3 py-2 text-right">% Purchasers</th>
+              <th className="px-3 py-2 text-right"># Purchasers</th>
+              <th className="px-3 py-2 text-right">Devices Purchased</th>
+              <th className="px-3 py-2 text-right">Monthly Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {timeSeriesResults.map((month, i) => {
+              const isMarketExhausted = month.potentialPurchasers === 0;
+              return (
+                <tr key={i} className={i % 2 ? 'bg-gray-50' : 'bg-white'}>
+                  <td className="px-3 py-2 font-medium">{month.month}</td>
+                  <td className={`px-3 py-2 text-right ${isMarketExhausted ? 'text-red-600 font-bold' : ''}`}>
+                    {month.potentialPurchasers.toLocaleString()}
+                    {isMarketExhausted && <span className="text-xs ml-1">🚫</span>}
+                  </td>
+                  <td className="px-3 py-2 text-right">{month.percentagePurchasers}%</td>
+                  <td className="px-3 py-2 text-right font-medium">{month.numberPurchasers.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right font-medium">{month.devicesPurchased.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right">${month.revenue.toLocaleString()}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="bg-gray-100 font-semibold">
+            <tr>
+              <td className="px-3 py-2">TOTAL</td>
+              <td className="px-3 py-2 text-right">-</td>
+              <td className="px-3 py-2 text-right">-</td>
+              <td className="px-3 py-2 text-right">
+                {timeSeriesResults.reduce((sum, month) => sum + month.numberPurchasers, 0).toLocaleString()}
+              </td>
+              <td className="px-3 py-2 text-right">
+                {timeSeriesResults.reduce((sum, month) => sum + month.devicesPurchased, 0).toLocaleString()}
+              </td>
+              <td className="px-3 py-2 text-right">
                 ${timeSeriesResults.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-gray-600">Total Projected Revenue</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-purple-600">
-                {(timeSeriesResults.reduce((sum, month) => sum + month.purchasingUsers, 0) / 
-                  timeSeriesResults.reduce((sum, month) => sum + month.users, 0) * 100).toFixed(1)}%
-              </div>
-              <div className="text-xs text-gray-600">Avg Conversion Rate</div>
-            </div>
-          </div>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
-          {/* Time Series Table */}
-          <div className="bg-white rounded shadow overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-3 py-2 text-left">Month</th>
-                  <th className="px-3 py-2 text-right">Potential Purchasers</th>
-                  <th className="px-3 py-2 text-right">% Purchasers</th>
-                  <th className="px-3 py-2 text-right"># Purchasers</th>
-                  <th className="px-3 py-2 text-right">Devices Purchased</th>
-                  <th className="px-3 py-2 text-right">Monthly Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {timeSeriesResults.map((month, i) => {
-                  const isMarketExhausted = month.potentialPurchasers === 0;
-                  return (
-                    <tr key={i} className={i % 2 ? 'bg-gray-50' : 'bg-white'}>
-                      <td className="px-3 py-2 font-medium">{month.month}</td>
-                      <td className={`px-3 py-2 text-right ${isMarketExhausted ? 'text-red-600 font-bold' : ''}`}>
-                        {month.potentialPurchasers.toLocaleString()}
-                        {isMarketExhausted && <span className="text-xs ml-1">🚫</span>}
-                      </td>
-                      <td className="px-3 py-2 text-right">{month.percentagePurchasers}%</td>
-                      <td className="px-3 py-2 text-right font-medium">{month.numberPurchasers.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right font-medium">{month.devicesPurchased.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right">${month.revenue.toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="bg-gray-100 font-semibold">
-                <tr>
-                  <td className="px-3 py-2">TOTAL</td>
-                  <td className="px-3 py-2 text-right">-</td>
-                  <td className="px-3 py-2 text-right">-</td>
-                  <td className="px-3 py-2 text-right">
-                    {timeSeriesResults.reduce((sum, month) => sum + month.numberPurchasers, 0).toLocaleString()}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {timeSeriesResults.reduce((sum, month) => sum + month.devicesPurchased, 0).toLocaleString()}
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    ${timeSeriesResults.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          {/* Insights */}
-          <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded">
-            <h3 className="text-sm font-semibold text-gray-800 mb-2">📈 Category-Based Purchase Model</h3>
-            <div className="text-xs text-gray-700 space-y-1">
-              <p>• <strong>Monthly Categorization:</strong> Each month, users are categorized and purchase based on their category likelihood</p>
-              <p>• <strong>Category Rates:</strong> Very High: {rates.veryHigh}%, High: {rates.high}%, Medium: {rates.medium}%, Low: {rates.low}%, Very Low: {rates.veryLow}%</p>
-              <p>• <strong>Quota Enforcement:</strong> Users who would purchase but have hit quota ({devicesPerUser} device{devicesPerUser > 1 ? 's' : ''}) are blocked</p>
-              <p>• <strong>% Purchasers:</strong> Actual purchase rate considering both category likelihood AND quota limitations</p>
-              <p>• <strong>Potential Purchasers:</strong> Only includes users who haven't reached their device limit</p>
-              <p>• Final remaining market: {timeSeriesResults[timeSeriesResults.length - 1]?.potentialPurchasers.toLocaleString() || '0'} users still eligible to purchase</p>
-            </div>
+      {/* Charts Row */}
+      <div className="grid grid-cols-3 gap-4 mt-6 mb-6">
+        {/* Devices Sold Chart */}
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-sm font-semibold mb-3 text-gray-800">Devices Sold by Month</h3>
+          <div style={{ height: '200px' }}>
+            <canvas ref={devicesChartRef}></canvas>
           </div>
         </div>
-      )}
+
+        {/* Purchasers Chart */}
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-sm font-semibold mb-3 text-gray-800"># Purchasers by Month</h3>
+          <div style={{ height: '200px' }}>
+            <canvas ref={purchasersChartRef}></canvas>
+          </div>
+        </div>
+
+        {/* Revenue Chart */}
+        <div className="bg-white p-4 rounded shadow">
+          <h3 className="text-sm font-semibold mb-3 text-gray-800">Revenue by Month</h3>
+          <div style={{ height: '200px' }}>
+            <canvas ref={revenueChartRef}></canvas>
+          </div>
+        </div>
+      </div>
+
+      {/* Insights */}
+      <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded">
+        <h3 className="text-sm font-semibold text-gray-800 mb-2">📈 Category-Based Purchase Model</h3>
+        <div className="text-xs text-gray-700 space-y-1">
+          <p>• <strong>Monthly Categorization:</strong> Each month, users are categorized and purchase based on their category likelihood</p>
+          <p>• <strong>Category Rates:</strong> Very High: {rates.veryHigh}%, High: {rates.high}%, Medium: {rates.medium}%, Low: {rates.low}%, Very Low: {rates.veryLow}%</p>
+          <p>• <strong>Quota Enforcement:</strong> Users who would purchase but have hit quota ({devicesPerUser} device{devicesPerUser > 1 ? 's' : ''}) are blocked</p>
+          <p>• <strong>% Purchasers:</strong> Actual purchase rate considering both category likelihood AND quota limitations</p>
+          <p>• <strong>Potential Purchasers:</strong> Only includes users who haven't reached their device limit</p>
+          <p>• Final remaining market: {timeSeriesResults[timeSeriesResults.length - 1]?.potentialPurchasers.toLocaleString() || '0'} users still eligible to purchase</p>
+        </div>
+      </div>
 
       {/* Information Sections */}
       <div className="p-4 bg-yellow-50 border border-yellow-200 rounded mt-4">
