@@ -38,13 +38,13 @@ export default function Calculator() {
 
   // Time series data for trends
   const timeSeriesData = [
-    { month: 'Jun 2024', users: 32258 },
-    { month: 'Jul 2024', users: 32757 },
-    { month: 'Aug 2024', users: 32452 },
-    { month: 'Sep 2024', users: 32829 },
-    { month: 'Oct 2024', users: 32152 },
-    { month: 'Nov 2024', users: 31636 },
-    { month: 'Dec 2024', users: 31838 }
+    { month: 'Launch', users: 32258 },
+    { month: 'Month 2', users: 32757 },
+    { month: 'Month 3', users: 32452 },
+    { month: 'Month 4', users: 32829 },
+    { month: 'Month 5', users: 32152 },
+    { month: 'Month 6', users: 31636 },
+    { month: 'Month 7', users: 31838 }
   ];
 
   // Main calculations
@@ -534,7 +534,7 @@ export default function Calculator() {
           </div>
           <p><strong>Categories:</strong> Very High (75-100 pts), High (60-74), Medium (40-59), Low (20-39), Very Low (0-19)</p>
           <p><strong>Realistic Market Size:</strong> {calculations.totalUsers.toLocaleString()} unique distributors → {calculations.totalPurchasingUsers.toLocaleString()} likely purchasers → {calculations.totalDevicesSold.toLocaleString()} total devices</p>
-          <p><strong>Time Series Note:</strong> Historical months show month-by-month potential, but represent the SAME user base, not cumulative opportunity</p>
+          <p><strong>Time Series Note:</strong> Historical months show month-by-month potential from Launch through Month 7, but represent the SAME user base, not cumulative opportunity</p>
           <p><strong>Devices Per User:</strong> Adjustable parameter (default: 1) allows modeling scenarios where users might purchase multiple devices for teams, replacements, or business expansion.</p>
         </div>
       </div>
