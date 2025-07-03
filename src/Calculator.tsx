@@ -396,26 +396,29 @@ export default function Calculator() {
       <div className="grid grid-cols-4 gap-4 mb-6 p-4 bg-white rounded shadow">
         <div className="text-center">
           <div className="text-lg font-bold text-blue-600">
-            {timeSeriesResults.reduce((sum, month) => sum + month.numberPurchasers, 0).toLocaleString()}
+            {timeSeriesResults.reduce((sum: number, month) => sum + (month.numberPurchasers || 0), 0).toLocaleString()}
           </div>
           <div className="text-xs text-gray-600">Total Purchasing Users</div>
         </div>
         <div className="text-center">
           <div className="text-lg font-bold text-green-600">
-            {timeSeriesResults.reduce((sum, month) => sum + month.devicesPurchased, 0).toLocaleString()}
+            {timeSeriesResults.reduce((sum: number, month) => sum + (month.devicesPurchased || 0), 0).toLocaleString()}
           </div>
           <div className="text-xs text-gray-600">Total Devices Sold</div>
         </div>
         <div className="text-center">
           <div className="text-lg font-bold text-orange-600">
-            ${timeSeriesResults.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
+            ${timeSeriesResults.reduce((sum: number, month) => sum + (month.revenue || 0), 0).toLocaleString()}
           </div>
           <div className="text-xs text-gray-600">Total Projected Revenue</div>
         </div>
         <div className="text-center">
           <div className="text-lg font-bold text-purple-600">
-            {timeSeriesResults.length > 0 ? (timeSeriesResults.reduce((sum, month) => sum + month.numberPurchasers, 0) / 
-              timeSeriesResults.reduce((sum, month) => sum + month.potentialPurchasers, 0) * 100).toFixed(1) : '0.0'}%
+            {(() => {
+              const totalPurchasers = timeSeriesResults.reduce((sum: number, month) => sum + (month.numberPurchasers || 0), 0);
+              const totalPotential = timeSeriesResults.reduce((sum: number, month) => sum + (month.potentialPurchasers || 0), 0);
+              return totalPotential > 0 ? ((totalPurchasers / totalPotential) * 100).toFixed(1) : '0.0';
+            })()}%
           </div>
           <div className="text-xs text-gray-600">Avg Conversion Rate</div>
         </div>
@@ -458,13 +461,13 @@ export default function Calculator() {
               <td className="px-3 py-2 text-right">-</td>
               <td className="px-3 py-2 text-right">-</td>
               <td className="px-3 py-2 text-right">
-                {timeSeriesResults.reduce((sum, month) => sum + month.numberPurchasers, 0).toLocaleString()}
+                {timeSeriesResults.reduce((sum: number, month) => sum + (month.numberPurchasers || 0), 0).toLocaleString()}
               </td>
               <td className="px-3 py-2 text-right">
-                {timeSeriesResults.reduce((sum, month) => sum + month.devicesPurchased, 0).toLocaleString()}
+                {timeSeriesResults.reduce((sum: number, month) => sum + (month.devicesPurchased || 0), 0).toLocaleString()}
               </td>
               <td className="px-3 py-2 text-right">
-                ${timeSeriesResults.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
+                ${timeSeriesResults.reduce((sum: number, month) => sum + (month.revenue || 0), 0).toLocaleString()}
               </td>
             </tr>
           </tfoot>
